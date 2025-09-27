@@ -29,12 +29,16 @@ main(int argc, char *argv[])
         read(p[0], &byte, 1); // 从管道读取一个字节
         write(p[1], &byte, 1); // 向管道写入一个字节
         printf("%d: received ping\n", getpid());
+        close(p[0]);
+        close(p[1]);
     }
     else{
         // 父进程
         wait(0); // 等待子进程结束
         read(p[0], &byte, 1); // 从管道读取一个字节
         printf("%d: received pong\n", getpid());
+        close(p[0]);
+        close(p[1]);
     }
 
     exit(0);
