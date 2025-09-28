@@ -7,6 +7,47 @@
 #include "kernel/fcntl.h"
 #include "user/user.h"
 
+void
+primes(int fd) { //current process reads thd read port of pipe
+    int prime;
+    if (read(fd, &prime, sizeof(int)) == 0) { // read the first number from fd
+        close(fd); // if no number, close fd and exit
+        exit(0);
+    }
+    printf("prime %d\n", prime); // print the prime number
+
+    int p[2]; // create a new pipe for the next process, write to p[1], read from p[0]
+    if (pipe(p) < 0) {
+        fprintf(2, "pipe failed\n");
+        exit(1);
+    }
+
+    int pid = fork(); // create a new process
+    if (pid < 0) {
+        fprintf(2, "fork failed\n");
+        exit(1);
+    } else if (pid == 0) {
+        // child process
+        close(p[1]); // close write end of pipe(chlid only reads)
+        primes(p[0]); // recursive call to primes with read end of pipe
+        close(p[0]); // close read end of pipe
+        exit(0);
+    } else {
+        // parent process
+        close(p[0]); // close read end of pipe(parent only writes)
+        int num;
+        while (read(fd, &num, sizeof(int)) > 0) {
+            if (num % prime != 0) {
+                write(p[1], &num, sizeof(int));
+            }
+        }
+        close(p[1]); // tell child no more numbers
+        wait(0); // wait for child to exit
+        close(fd); // close read end of fd
+        exit(0);
+    }
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -21,38 +62,8 @@ main(int argc, char *argv[])
         write(p[1], &num, sizeof(int)); // write source to pipe
     }
 
-    int pid = fork();
-    if(pid < 0) {
-        fprintf(2, "fork failed\n");
-        exit(1);
-    } else if(pid == 0) {
-        int prime;
-        int num;
-        int next_p[2];
-
-        if (pipe(next_p) < 0) {
-            fprintf(2, "pipe failed\n");
-            exit(1);
-        }
-        // child process
-        close(0);   // close stdin fd 0
-        dup(p[0]);  // read data from pipe
-        read(p[0], &prime, sizeof(int)); //read first data as prime
-        printf("prime %d\n, prime"); // print prime
-
-        close(p[0]); // close parent->chlid pipe read port
-
-        while (read(p[0], &num, sizeof(int) > 0)) {
-            if (num % prime != 0) {
-                write(next_p[1], &num, sizeof(int));
-            }
-        }
-
-        close(next_p[0]);
-        close(next_p[1]);
-    }
-
-
-    close(p[0]); // shutdown read port
+    close(p[1]); // close write end of pipe
+    primes(p[0]); // start the chain of processes
+    close(p[0]); // close read end of pipe
     exit(0);
 }

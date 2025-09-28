@@ -10,35 +10,41 @@
 int
 main(int argc, char *argv[])
 {
-    int p[2];
-    if(pipe(p) < 0){
-        // 创建失败
+    int p1[2]; // parent -> child
+    int p2[2]; // child -> parent
+    if(pipe(p1) || pipe(p2) < 0){
+        // pipe failed
         fprintf(2, "pipe failed\n");
         exit(1);
     }
-    char byte = 'A';
-    write(p[1], &byte, 1); // 向管道写入一个字节
-    int pid = fork();
 
+    char byte = 'A';
+    int pid = fork();
     if(pid < 0){
-        // 创建子进程失败
+        // child process failed
         fprintf(2, "fork failed\n");
         exit(1);
     } else if(pid == 0){
-        // 子进程
-        read(p[0], &byte, 1); // 从管道读取一个字节
-        write(p[1], &byte, 1); // 向管道写入一个字节
+        // child process
+        read(p1[0], &byte, 1); // read ping from parent
         printf("%d: received ping\n", getpid());
-        close(p[0]);
-        close(p[1]);
+
+        write(p2[1], &byte, 1); // write pong to parent
+        close(p1[0]);
+        close(p2[1]);
+        exit(0);
     }
     else{
-        // 父进程
-        wait(0); // 等待子进程结束
-        read(p[0], &byte, 1); // 从管道读取一个字节
+        // parent process
+        close(p1[0]); // parent only writes to p1
+        close(p2[1]); // child only reads from p2
+        write(p1[1], &byte, 1); // send ping to child
+        
+        read(p2[0], &byte, 1); // wait response from child
         printf("%d: received pong\n", getpid());
-        close(p[0]);
-        close(p[1]);
+        close(p1[1]);
+        close(p2[0]);
+        wait(0); // wait for child to exit
     }
 
     exit(0);
