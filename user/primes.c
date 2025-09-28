@@ -38,7 +38,7 @@ main(int argc, char *argv[])
         close(0);   // close stdin fd 0
         dup(p[0]);  // read data from pipe
         read(p[0], &prime, sizeof(int)); //read first data as prime
-        print("prime %d\n, prime") // print prime
+        printf("prime %d\n, prime"); // print prime
 
         close(p[0]); // close parent->chlid pipe read port
 
