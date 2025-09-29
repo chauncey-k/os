@@ -12,7 +12,7 @@ main(int argc, char *argv[])
 {
     int p1[2]; // parent -> child
     int p2[2]; // child -> parent
-    if(pipe(p1) || pipe(p2) < 0){
+    if(pipe(p1) < 0 || pipe(p2) < 0){
         // pipe failed
         fprintf(2, "pipe failed\n");
         exit(1);
@@ -26,6 +26,9 @@ main(int argc, char *argv[])
         exit(1);
     } else if(pid == 0){
         // child process
+        close(p1[1]); // child only use p1[0] to read and p2[1] to write
+        close(p2[0]);
+
         read(p1[0], &byte, 1); // read ping from parent
         printf("%d: received ping\n", getpid());
 
