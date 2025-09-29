@@ -10,8 +10,8 @@
 void
 primes(int fd) { //current process reads thd read port of pipe
     int prime;
-    if (read(fd, &prime, sizeof(int)) == 0) { // read the first number from fd
-        close(fd); // if no number, close fd and exit
+    if (read(fd, &prime, sizeof(int)) == 0) { // if no number, close fd and exit
+        close(fd);
         exit(0);
     }
     printf("prime %d\n", prime); // print the prime number
@@ -36,11 +36,12 @@ primes(int fd) { //current process reads thd read port of pipe
         // parent process
         close(p[0]); // close read end of pipe(parent only writes)
         int num;
-        while (read(fd, &num, sizeof(int)) > 0) {
-            if (num % prime != 0) {
+        while (read(fd, &num, sizeof(int)) > 0) { // read data from fd
+            if (num % prime != 0) { // if the data is not multiply of prime, write to p[1](child process)
                 write(p[1], &num, sizeof(int));
             }
         }
+        
         close(p[1]); // tell child no more numbers
         wait(0); // wait for child to exit
         close(fd); // close read end of fd
@@ -61,9 +62,10 @@ main(int argc, char *argv[])
     for(int num = 2; num <= 35; num++) {
         write(p[1], &num, sizeof(int)); // write source to pipe
     }
-
     close(p[1]); // close write end of pipe
-    primes(p[0]); // start the chain of processes
+    
+    primes(p[0]); // start the chain of processes, primes need p[0] fd to read data
     close(p[0]); // close read end of pipe
+    
     exit(0);
 }
